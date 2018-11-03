@@ -57,7 +57,6 @@ class LSTMTrainer(BaseTrain):
             self.test(cur_epoch)
 
     def train_epoch(self, epoch=None):
-        self.data_loader.initialize(self.sess, is_training=True)
 
         tt = tqdm(range(self.data_loader.train_iterations), total=self.data_loader.train_iterations,
                   desc="epoch-{}-".format(epoch))
@@ -86,7 +85,17 @@ class LSTMTrainer(BaseTrain):
         also get the loss & acc of that minibatch.
         :return: (loss, acc) tuple of some metrics to be used in summaries
         """
-        _, loss = self.sess.run([self.train_op, self.loss_node], feed_dict={self.is_training: True})
+
+        feed_dict = {}
+        for step in range(self.model.time_steps):
+            input, label = self.data_loader.next_batch()
+
+            feed_dict[self.model.train_inputs[step]] = input.reshape(-1, 1)
+            feed_dict[self.model.train_labels[step]] = label.reshape(-1, 1)
+
+        feed_dict.update({self.is_training: False, self.model.learning_rate: self.config.learning_rate,
+                          self.model.min_learning_rate: self.config.min_learning_rate})
+        _, loss = self.sess.run([self.train_op, self.loss_node], feed_dict=feed_dict)
 
         return loss
 
@@ -103,7 +112,16 @@ class LSTMTrainer(BaseTrain):
         # Iterate over batches
         for cur_it in tt:
             # One Train step on the current batch
-            loss = self.sess.run([self.loss_node], feed_dict={self.is_training: False})
+            feed_dict = {}
+            for step in range(self.model.time_steps):
+                input, label = self.data_loader.next_batch()
+
+                feed_dict[self.model.train_inputs[step]] = input
+                feed_dict[self.model.train_labels[step]] = label
+
+            feed_dict.update({self.is_training: False})
+
+            loss = self.sess.run([self.loss_node], feed_dict=feed_dict)
             # update metrics returned from train_step func
             loss_per_epoch.update(loss)
 
@@ -130,14 +148,17 @@ if __name__ == '__main__':
         time_steps = 50
         num_nodes = [200, 200, 150]
         learning_rate = 0.0001
+        min_learning_rate = 0.000001
         decay_learning_rate = 0.5
         dropout = 0.2
+        num_epochs = 1
 
     data_loader = DataLoader(config)
     model = LSTMmodel(data_loader=None, config=config)
     sess = tf.Session()
 
     trainer = LSTMTrainer(sess=sess, model=model, config=config, logger=None, data_loader=data_loader)
+    trainer.train()
 
 
 

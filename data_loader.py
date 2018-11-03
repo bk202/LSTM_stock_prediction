@@ -37,7 +37,7 @@ class DataLoader:
         self.scaler = MinMaxScaler()
         self.preprocess_data()
 
-        self.segments = self.train_data.size // self.config.batch_size
+        self.segments = (self.train_data.size // self.config.batch_size) - 1
 
         # Offsets keeps track of the index of where to collect batch data from.
         # Ex. |dataset| = 200, batch_size = 200, offsets = [0, 40, 80, 120, 160]
@@ -54,7 +54,7 @@ class DataLoader:
         batch_data = np.zeros((self.config.batch_size), dtype=np.float32)
         batch_label = np.zeros((self.config.batch_size), dtype=np.float32)
 
-        print('\n\tOffsets: ', self.offsets)
+        #print('\n\tOffsets: ', self.offsets)
         for idx in range(self.config.batch_size):
             offset = self.offsets[idx]
             label_idx = np.random.randint(offset, offset + 5)
@@ -133,11 +133,11 @@ def main():
     data_loader = DataLoader(config)
 
     data, labels = data_loader.get_unrolls()
-    for idx in range(len(data)):
-        print('\n\nUnrolled index {}'.format(idx))
-
-        print('\tInputs: ', data[idx])
-        print('\n\tOutputs: ', labels[idx])
+    # for idx in range(len(data)):
+    #     print('\n\nUnrolled index {}'.format(idx))
+    #
+    #     print('\tInputs: ', data[idx])
+    #     print('\n\tOutputs: ', labels[idx])
 
 if __name__ == '__main__':
     main()

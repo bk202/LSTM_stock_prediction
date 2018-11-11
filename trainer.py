@@ -23,7 +23,7 @@ class LSTMTrainer(BaseTrain):
         """
 
         super(LSTMTrainer, self).__init__(sess, model, config, logger, data_loader)
-        #self.model.load(sess)
+        self.model.load(sess)
 
         self.summarizer = logger
         self.inputs_collection = tf.get_collection('inputs')
@@ -71,7 +71,7 @@ class LSTMTrainer(BaseTrain):
 
         self.sess.run(self.model.global_epoch_inc)
 
-        self.model.save(self.sess)
+        self.model.save(self.sess, self.config.checkpoint_dir)
 
         print("""
         Epoch-{}  loss:{:.4f}
@@ -100,8 +100,6 @@ class LSTMTrainer(BaseTrain):
         return loss
 
     def test(self, epoch):
-        # initialize dataset
-        self.data_loader.initialize(self.sess, is_training=False)
 
         # initialize tqdm
         tt = tqdm(range(self.data_loader.test_iterations), total=self.data_loader.test_iterations,
@@ -116,13 +114,15 @@ class LSTMTrainer(BaseTrain):
             for step in range(self.model.time_steps):
                 input, label = self.data_loader.next_batch()
 
-                feed_dict[self.model.train_inputs[step]] = input
-                feed_dict[self.model.train_labels[step]] = label
+                feed_dict[self.model.train_inputs[step]] = input.reshape(-1, 1)
+                feed_dict[self.model.train_labels[step]] = label.reshape(-1, 1)
 
             feed_dict.update({self.is_training: False})
 
             loss = self.sess.run([self.loss_node], feed_dict=feed_dict)
+            loss = loss[0]
             # update metrics returned from train_step func
+
             loss_per_epoch.update(loss)
 
         # summarize
@@ -152,6 +152,7 @@ if __name__ == '__main__':
         decay_learning_rate = 0.5
         dropout = 0.2
         num_epochs = 1
+        checkpoint_dir = './modelSave/'
 
     data_loader = DataLoader(config)
     model = LSTMmodel(data_loader=None, config=config)
